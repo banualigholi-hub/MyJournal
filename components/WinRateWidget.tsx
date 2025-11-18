@@ -27,7 +27,7 @@ export const WinRateWidget: React.FC<WinRateWidgetProps> = ({ trades }) => {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between min-h-[130px] h-full overflow-hidden relative gap-8">
       {/* Semi-Circle Gauge */}
-      <div className="w-32 h-24 relative -mt-4 flex-shrink-0">
+      <div className="w-48 h-32 relative -mt-6 flex-shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -36,8 +36,8 @@ export const WinRateWidget: React.FC<WinRateWidgetProps> = ({ trades }) => {
               cy="80%"
               startAngle={180}
               endAngle={0}
-              innerRadius={40}
-              outerRadius={55}
+              innerRadius={50}
+              outerRadius={70}
               paddingAngle={0}
               dataKey="value"
               stroke="none"
@@ -50,23 +50,23 @@ export const WinRateWidget: React.FC<WinRateWidgetProps> = ({ trades }) => {
         </ResponsiveContainer>
         
         {/* Centered Text */}
-        <div className="absolute inset-x-0 bottom-1 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-2xl font-bold text-slate-700 leading-none">{Math.round(winRate)}<span className="text-sm align-top">%</span></span>
-          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">WINRATE</span>
+        <div className="absolute inset-x-0 bottom-2 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-3xl font-bold text-slate-700 leading-none">{Math.round(winRate)}<span className="text-sm align-top">%</span></span>
+          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">WINRATE</span>
         </div>
       </div>
 
       {/* Stats Legend */}
-      <div className="flex flex-col gap-2 flex-grow min-w-0 pr-2">
+      <div className="flex flex-col gap-3 flex-grow min-w-0 pr-4 justify-center">
         <div className="flex items-center justify-end gap-3">
            <span className="text-xs text-slate-500 font-medium">winners</span>
-           <div className="w-8 h-8 rounded bg-success-100 text-success-700 flex-shrink-0 flex items-center justify-center font-bold text-sm">
+           <div className="w-9 h-9 rounded-lg bg-success-100 text-success-700 flex-shrink-0 flex items-center justify-center font-bold text-base shadow-sm">
                {wins}
            </div>
         </div>
         <div className="flex items-center justify-end gap-3">
            <span className="text-xs text-slate-500 font-medium">losers</span>
-           <div className="w-8 h-8 rounded bg-danger-100 text-danger-700 flex-shrink-0 flex items-center justify-center font-bold text-sm">
+           <div className="w-9 h-9 rounded-lg bg-danger-100 text-danger-700 flex-shrink-0 flex items-center justify-center font-bold text-base shadow-sm">
                {losses}
            </div>
         </div>

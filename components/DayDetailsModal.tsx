@@ -75,16 +75,18 @@ export const DayDetailsModal: React.FC<DayDetailsModalProps> = ({ date, trades, 
                                 {trade.pnlPercent > 0 ? '+' : ''}{trade.pnlPercent.toFixed(2)}%
                             </div>
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1">
                             <button 
                                 onClick={() => onEdit(trade)}
                                 className="text-slate-400 hover:text-primary-600 hover:bg-primary-50 p-2 rounded-lg transition-colors"
+                                title="Edit Trade"
                             >
                                 <Pencil size={18} />
                             </button>
                             <button 
                                 onClick={() => onDelete(trade.id)}
                                 className="text-slate-400 hover:text-danger-600 hover:bg-danger-50 p-2 rounded-lg transition-colors"
+                                title="Delete Trade"
                             >
                                 <Trash2 size={18} />
                             </button>

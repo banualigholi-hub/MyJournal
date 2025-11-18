@@ -117,18 +117,18 @@ export const Calendar: React.FC<CalendarProps> = ({ trades, onDayClick }) => {
 
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
           Calendar Performance
         </h2>
-        <div className="flex items-center gap-4 bg-slate-50 p-1 rounded-xl border border-slate-200">
-          <button onClick={previousMonth} className="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-slate-600 transition-all shadow-sm">
+        <div className="flex items-center gap-4 bg-slate-50 p-1 rounded-xl border border-slate-200 w-full md:w-1/2 justify-between">
+          <button onClick={previousMonth} className="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-slate-600 transition-all shadow-sm flex-shrink-0">
             <ChevronLeft size={20} />
           </button>
-          <span className="text-sm font-semibold text-slate-700 min-w-[140px] text-center uppercase tracking-wide">
+          <span className="text-sm font-semibold text-slate-700 text-center uppercase tracking-wide flex-grow truncate px-2">
             {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
           </span>
-          <button onClick={nextMonth} className="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-slate-600 transition-all shadow-sm">
+          <button onClick={nextMonth} className="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-slate-600 transition-all shadow-sm flex-shrink-0">
             <ChevronRight size={20} />
           </button>
         </div>
@@ -136,8 +136,8 @@ export const Calendar: React.FC<CalendarProps> = ({ trades, onDayClick }) => {
 
       {/* Grid Header */}
       <div className="grid grid-cols-6 gap-2 mb-2">
-        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Week Result'].map((d, i) => (
-          <div key={d} className={`text-xs font-bold text-slate-400 uppercase tracking-wider py-3 text-center ${i === 5 ? 'bg-slate-50 rounded-lg text-slate-500' : ''}`}>
+        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', ''].map((d, i) => (
+          <div key={i} className={`text-xs font-bold text-slate-400 uppercase tracking-wider py-3 text-center ${i === 5 ? 'bg-slate-50 rounded-lg text-slate-500' : ''}`}>
               {d}
           </div>
         ))}
@@ -170,13 +170,22 @@ export const Calendar: React.FC<CalendarProps> = ({ trades, onDayClick }) => {
                     }
 
                     const isToday = todayStr === day.date;
+                    
+                    // Calculate dynamic font size for PnL based on length
+                    const formattedPnl = day.stats.pnl.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 });
+                    const pnlLength = formattedPnl.length;
+                    
+                    let pnlFontSize = "text-base md:text-lg";
+                    if (pnlLength > 9) pnlFontSize = "text-[10px] md:text-xs";
+                    else if (pnlLength > 7) pnlFontSize = "text-xs md:text-sm";
 
+                    // Compressed height classes: min-h-[80px] md:min-h-[90px] and reduced padding
                     return (
                         <div 
                             key={dIndex}
                             onClick={() => onDayClick(day.date)}
                             className={`
-                                min-h-[100px] md:min-h-[120px] border rounded-xl p-3 flex flex-col justify-between cursor-pointer transition-all relative overflow-hidden
+                                min-h-[80px] md:min-h-[90px] border rounded-xl p-2 flex flex-col justify-between cursor-pointer transition-all relative overflow-hidden
                                 ${bgClass} ${isToday ? 'ring-2 ring-primary-500 shadow-lg' : ''}
                                 ${!day.isCurrentMonth ? 'opacity-40' : 'opacity-100'}
                             `}
@@ -187,16 +196,16 @@ export const Calendar: React.FC<CalendarProps> = ({ trades, onDayClick }) => {
                                 </span>
                             </div>
                             
-                            <div className="flex flex-col items-end gap-0.5 z-10">
+                            <div className="flex flex-col items-end gap-0 z-10 w-full">
                                 {day.stats.count > 0 ? (
                                     <>
-                                        <span className={`text-base md:text-lg font-bold tracking-tight ${pnlColor}`}>
-                                            {day.stats.pnl > 0 ? '+' : ''}{day.stats.pnl.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 })}
+                                        <span className={`${pnlFontSize} font-bold tracking-tight ${pnlColor} leading-tight whitespace-nowrap overflow-hidden`}>
+                                            {day.stats.pnl > 0 ? '+' : ''}{formattedPnl}
                                         </span>
-                                        <span className={`text-xs font-medium ${percentColor}`}>
+                                        <span className={`text-[10px] font-medium ${percentColor} leading-tight`}>
                                             {day.stats.percent > 0 ? '+' : ''}{day.stats.percent.toFixed(2)}%
                                         </span>
-                                        <span className="text-[10px] font-medium text-slate-500 mt-1">
+                                        <span className="text-[9px] font-medium text-slate-500 mt-0.5">
                                             {day.stats.count} Trade{day.stats.count > 1 ? 's' : ''}
                                         </span>
                                     </>
@@ -208,16 +217,15 @@ export const Calendar: React.FC<CalendarProps> = ({ trades, onDayClick }) => {
                     );
                 })}
 
-                {/* Week Summary Column */}
-                <div className="min-h-[100px] md:min-h-[120px] bg-slate-100 border border-slate-200 rounded-xl p-3 flex flex-col justify-center items-end gap-1">
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Weekly Net</span>
-                    <span className={`text-lg font-bold ${week.summary.pnl >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
+                {/* Week Summary Column - Compressed */}
+                <div className="min-h-[80px] md:min-h-[90px] bg-slate-100 border border-slate-200 rounded-xl p-2 flex flex-col justify-center items-end gap-1">
+                    <span className={`text-lg font-bold ${week.summary.pnl >= 0 ? 'text-success-600' : 'text-danger-600'} leading-tight`}>
                         {week.summary.pnl > 0 ? '+' : ''}{week.summary.pnl.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 })}
                     </span>
-                    <span className={`text-xs font-medium ${week.summary.percent >= 0 ? 'text-success-500' : 'text-danger-500'}`}>
+                    <span className={`text-[10px] font-medium ${week.summary.percent >= 0 ? 'text-success-500' : 'text-danger-500'} leading-tight`}>
                         {week.summary.percent > 0 ? '+' : ''}{week.summary.percent.toFixed(2)}%
                     </span>
-                    <span className="text-[10px] text-slate-500 mt-1">
+                    <span className="text-[9px] text-slate-500 mt-0">
                         {week.summary.count} Total Trades
                     </span>
                 </div>

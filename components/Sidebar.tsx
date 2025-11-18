@@ -1,24 +1,16 @@
 import React, { useRef } from 'react';
-import { LayoutDashboard, BookOpen, BarChart3, PlusCircle, Download, Upload } from 'lucide-react';
+import { PlusCircle, Download, Upload } from 'lucide-react';
 import { exportTradesToCSV, parseCSV } from '../services/storage';
 import { Trade } from '../types';
 
 interface SidebarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
   onAddTrade: () => void;
   trades: Trade[];
   onImport: (trades: Trade[]) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onAddTrade, trades, onImport }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ onAddTrade, trades, onImport }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'journal', label: 'Journal', icon: BookOpen },
-    { id: 'reports', label: 'Reports', icon: BarChart3 },
-  ];
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files[0]) {
@@ -50,21 +42,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onAdd
         <h1 className="text-xl font-bold text-slate-800 tracking-tight">TradeJournal</h1>
       </div>
 
-      <div className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-              activeTab === item.id
-                ? 'bg-primary-50 text-primary-600 border border-primary-100'
-                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-            }`}
-          >
-            <item.icon size={20} className={activeTab === item.id ? 'text-primary-600' : 'text-slate-400'} />
-            {item.label}
-          </button>
-        ))}
+      <div className="flex-1">
+         {/* Navigation removed for Single Page View */}
       </div>
 
       <div className="px-4 py-2 border-t border-slate-100 space-y-2">

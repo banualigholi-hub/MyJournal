@@ -43,4 +43,6 @@ export interface AppStats {
   bestDayPercent: number;
   worstDay: number;
   worstDayPercent: number;
+  avgDailyProfit: number;
+  maxDrawdown: number;
 }
