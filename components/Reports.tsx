@@ -130,9 +130,19 @@ export const WeeklyPerformance: React.FC<StatsProps> = ({ trades }) => {
         return monday;
     };
 
+    // Format Helper: +$288 or -$288 (No decimals)
+    const formatSummaryPnl = (amount: number) => {
+        const rounded = Math.round(amount);
+        const abs = Math.abs(rounded);
+        const sign = rounded > 0 ? '+' : rounded < 0 ? '-' : '';
+        return `${sign}$${abs}`;
+    };
+
     const weeksMap = new Map<number, Trade[]>();
     trades.forEach(t => {
-        const date = new Date(t.date.replace(/-/g, '/')); 
+        // Ensure robust date parsing regardless of browser
+        const [y, m, d] = t.date.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
         const monday = getMonday(date);
         const time = monday.getTime();
         if (!weeksMap.has(time)) weeksMap.set(time, []);
@@ -237,7 +247,7 @@ export const WeeklyPerformance: React.FC<StatsProps> = ({ trades }) => {
 
                         <div className="min-h-[60px] bg-slate-100 border border-slate-200 rounded-xl p-2 flex flex-col justify-center items-end relative overflow-hidden">
                              <span className={`text-xs sm:text-sm font-bold whitespace-nowrap ${week.summary.pnl >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-                                {week.summary.pnl > 0 ? '+' : ''}{Math.round(week.summary.pnl)}
+                                {formatSummaryPnl(week.summary.pnl)}
                             </span>
                             <span className={`text-[8px] sm:text-[9px] font-medium whitespace-nowrap ${week.summary.percent >= 0 ? 'text-success-500' : 'text-danger-500'}`}>
                                 {week.summary.percent > 0 ? '+' : ''}{week.summary.percent.toFixed(2)}%

@@ -31,7 +31,7 @@ export const EquityCurveChart: React.FC<ChartProps> = ({ trades }) => {
 
     return (
         <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                 <XAxis dataKey="date" stroke="#94a3b8" tick={{fontSize: 10}} tickMargin={10} minTickGap={30} />
                 <YAxis stroke="#94a3b8" tick={{fontSize: 10}} tickFormatter={(val) => `$${val}`} />

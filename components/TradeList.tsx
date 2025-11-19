@@ -50,8 +50,12 @@ export const TradeList: React.FC<TradeListProps> = ({ trades, onEdit, onDelete, 
               sortedTrades.map((trade) => (
                 <tr key={trade.id} className="hover:bg-slate-50/80 transition-colors group">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-bold text-slate-700">{trade.date}</div>
-                    <div className="text-xs text-slate-400 font-mono">{trade.time}</div>
+                    {/* Smaller font, single line */}
+                    <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500 whitespace-nowrap">
+                         <span className="text-slate-600">{trade.date}</span>
+                         <span className="text-slate-300 mx-1">|</span>
+                         <span className="font-mono text-slate-400">{trade.time}</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 font-bold text-slate-800 tracking-tight">
                     {trade.ticker}

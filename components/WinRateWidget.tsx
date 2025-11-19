@@ -25,39 +25,40 @@ export const WinRateWidget: React.FC<WinRateWidgetProps> = ({ trades }) => {
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between min-h-[130px] h-full overflow-hidden relative gap-8">
-      {/* Semi-Circle Gauge */}
-      <div className="w-48 h-32 relative -mt-6 flex-shrink-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="80%"
-              startAngle={180}
-              endAngle={0}
-              innerRadius={50}
-              outerRadius={70}
-              paddingAngle={0}
-              dataKey="value"
-              stroke="none"
-            >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} cornerRadius={0} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-        
-        {/* Centered Text */}
-        <div className="absolute inset-x-0 bottom-2 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-bold text-slate-700 leading-none">{Math.round(winRate)}<span className="text-sm align-top">%</span></span>
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">WINRATE</span>
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between min-h-[130px] h-full overflow-hidden relative gap-2">
+      {/* Semi-Circle Gauge - Increased Size */}
+      <div className="w-3/5 h-full relative flex items-center justify-center">
+        <div className="w-full h-[160px] absolute top-1/2 -translate-y-1/2 transform translate-x-[-10px]">
+            <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+                <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                startAngle={180}
+                endAngle={0}
+                innerRadius={75} // Increased size
+                outerRadius={105} // Increased size
+                paddingAngle={0}
+                dataKey="value"
+                stroke="none"
+                >
+                {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} cornerRadius={0} />
+                ))}
+                </Pie>
+            </PieChart>
+            </ResponsiveContainer>
+            
+             {/* Centered Text */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pt-6">
+                <span className="text-3xl font-bold text-slate-900 leading-none">{Math.round(winRate)}<span className="text-sm align-top">%</span></span>
+            </div>
         </div>
       </div>
 
       {/* Stats Legend */}
-      <div className="flex flex-col gap-3 flex-grow min-w-0 pr-4 justify-center">
+      <div className="flex flex-col gap-3 pr-4 justify-center flex-shrink-0">
         <div className="flex items-center justify-end gap-3">
            <span className="text-xs text-slate-500 font-medium">winners</span>
            <div className="w-9 h-9 rounded-lg bg-success-100 text-success-700 flex-shrink-0 flex items-center justify-center font-bold text-base shadow-sm">

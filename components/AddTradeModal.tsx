@@ -58,14 +58,15 @@ export const AddTradeModal: React.FC<AddTradeModalProps> = ({ isOpen, onClose, o
                 accountBalance: Math.abs(estimatedBalance)
             });
         } else {
+            // Reset for new trade
             setFormData({
                 id: '',
                 timestamp: 0,
-                date: initialDate || getLocalDate(),
+                date: initialDate || getLocalDate(), // Defaults to Today (Local)
                 time: new Date().toTimeString().slice(0, 5),
                 direction: TradeDirection.LONG,
                 status: TradeStatus.WIN,
-                pnl: '', // Start empty for new trades
+                pnl: '', // Start empty for new trades, removes '0'
                 pnlPercent: 0,
                 accountBalance: 10000,
                 notes: '',
@@ -73,10 +74,12 @@ export const AddTradeModal: React.FC<AddTradeModalProps> = ({ isOpen, onClose, o
                 ticker: 'XAUUSD'
             });
             
-            // Auto-focus the PnL input for new trades
+            // Auto-focus the PnL input for new trades immediately
+            // We use a small timeout to ensure modal transition doesn't interfere, 
+            // but also try standard focus.
             setTimeout(() => {
                 pnlInputRef.current?.focus();
-            }, 100);
+            }, 50);
         }
     }
   }, [isOpen, initialDate, tradeToEdit]);
@@ -160,10 +163,22 @@ export const AddTradeModal: React.FC<AddTradeModalProps> = ({ isOpen, onClose, o
             
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-500">Direction</label>
-              <select name="direction" value={formData.direction} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all appearance-none">
-                <option value={TradeDirection.LONG}>Long (Buy)</option>
-                <option value={TradeDirection.SHORT}>Short (Sell)</option>
-              </select>
+              <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, direction: TradeDirection.LONG }))}
+                    className={`flex items-center justify-center py-3 rounded-xl font-bold transition-all border ${formData.direction === TradeDirection.LONG ? 'bg-success-500 text-white border-success-600 shadow-lg shadow-success-500/30' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}
+                  >
+                      Buy / Long
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, direction: TradeDirection.SHORT }))}
+                    className={`flex items-center justify-center py-3 rounded-xl font-bold transition-all border ${formData.direction === TradeDirection.SHORT ? 'bg-danger-500 text-white border-danger-600 shadow-lg shadow-danger-500/30' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}
+                  >
+                      Sell / Short
+                  </button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -204,21 +219,31 @@ export const AddTradeModal: React.FC<AddTradeModalProps> = ({ isOpen, onClose, o
             </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
-            {tradeToEdit && (
-                 <button 
-                    type="button" 
-                    onClick={handleDelete} 
-                    className="px-6 py-3 rounded-xl bg-danger-50 text-danger-600 hover:bg-danger-100 transition-colors font-medium flex items-center gap-2 mr-auto"
-                >
-                    <Trash2 size={18} /> Delete
-                </button>
+          <div className="pt-4 border-t border-slate-100 flex w-full gap-3">
+            {tradeToEdit ? (
+                <>
+                    <button 
+                        type="button" 
+                        onClick={handleDelete} 
+                        className="flex-1 py-3 rounded-xl bg-danger-50 text-danger-600 hover:bg-danger-100 transition-colors font-bold flex items-center justify-center gap-2"
+                    >
+                        <Trash2 size={18} /> Delete
+                    </button>
+                    <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors font-bold">Cancel</button>
+                    <button type="submit" className="flex-1 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold transition-colors shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2">
+                        <Save size={20} />
+                        Update
+                    </button>
+                </>
+            ) : (
+                <>
+                    <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors font-bold">Cancel</button>
+                    <button type="submit" className="flex-1 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold transition-colors shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2">
+                        <Save size={20} />
+                        Save
+                    </button>
+                </>
             )}
-            <button type="button" onClick={onClose} className="px-6 py-3 rounded-xl text-slate-500 hover:bg-slate-50 transition-colors font-medium">Cancel</button>
-            <button type="submit" className="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold transition-colors shadow-lg shadow-slate-900/20 flex items-center gap-2">
-              <Save size={20} />
-              {tradeToEdit ? 'Update Trade' : 'Save Trade'}
-            </button>
           </div>
         </form>
       </div>

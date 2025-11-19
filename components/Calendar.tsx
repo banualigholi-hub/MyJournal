@@ -48,23 +48,22 @@ export const Calendar: React.FC<CalendarProps> = ({ trades, onDayClick }) => {
   const renderWeeks = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    const firstDayOfMonth = new Date(year, month, 1);
     
-    // Find the Monday of the week containing the 1st of the month
+    // Create Date object for 1st of month, but set to Noon (12:00)
+    // This prevents midnight/DST shifts from skipping days when iterating
+    const firstDayOfMonth = new Date(year, month, 1, 12, 0, 0, 0);
+    
     const startDay = firstDayOfMonth.getDay(); // 0=Sun, 1=Mon...
-    // Calculate offset to get to Monday. If Sun(0), go back 6 days. If Mon(1), go back 0.
     const daysFromMonday = startDay === 0 ? 6 : startDay - 1;
     
-    // Start iteration from the first Monday of the view
+    // Clone to start date
     const startDate = new Date(firstDayOfMonth);
     startDate.setDate(startDate.getDate() - daysFromMonday);
 
     const weeks = [];
-    // We clone startDate to avoid modifying it directly in loop
     let current = new Date(startDate);
     
-    // Loop until we cover the whole month
-    // Safe guard loop count 6 (max weeks in month view)
+    // Loop 6 weeks max
     for (let w = 0; w < 6; w++) {
         const weekDays = [];
         let weekPnl = 0;
@@ -72,21 +71,18 @@ export const Calendar: React.FC<CalendarProps> = ({ trades, onDayClick }) => {
         let weekTradesCount = 0;
         let hasDaysInMonth = false;
 
-        // Loop Mon (0) to Sun (6)
-        // We calculate stats for all 7 days to keep week totals correct, but only render Mon-Fri
         for (let d = 0; d < 7; d++) {
             const dateStr = getLocalDateString(current);
             const stats = getDayStats(dateStr);
-            const isCurrentMonth = current.getMonth() === month;
             
+            const isCurrentMonth = current.getMonth() === month;
             if (isCurrentMonth) hasDaysInMonth = true;
 
-            // Accumulate Weekly Stats
             weekPnl += stats.pnl;
             weekPercent += stats.percent;
             weekTradesCount += stats.count;
 
-            // Only push Mon-Fri to render array
+            // Only render Mon-Fri
             if (d < 5) {
                 weekDays.push({
                     date: dateStr,
@@ -96,7 +92,7 @@ export const Calendar: React.FC<CalendarProps> = ({ trades, onDayClick }) => {
                 });
             }
             
-            // Move to next day
+            // Safe increment by adding 24 hours roughly, but setDate(getDate() + 1) is safe at Noon
             current.setDate(current.getDate() + 1);
         }
 
@@ -171,15 +167,15 @@ export const Calendar: React.FC<CalendarProps> = ({ trades, onDayClick }) => {
 
                     const isToday = todayStr === day.date;
                     
-                    // Calculate dynamic font size for PnL based on length
+                    // Dynamic font sizing
                     const formattedPnl = day.stats.pnl.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 });
                     const pnlLength = formattedPnl.length;
                     
                     let pnlFontSize = "text-base md:text-lg";
-                    if (pnlLength > 9) pnlFontSize = "text-[10px] md:text-xs";
-                    else if (pnlLength > 7) pnlFontSize = "text-xs md:text-sm";
+                    if (pnlLength > 10) pnlFontSize = "text-[9px] md:text-[10px]";
+                    else if (pnlLength > 8) pnlFontSize = "text-[10px] md:text-xs";
+                    else if (pnlLength > 6) pnlFontSize = "text-xs md:text-sm";
 
-                    // Compressed height classes: min-h-[80px] md:min-h-[90px] and reduced padding
                     return (
                         <div 
                             key={dIndex}
@@ -199,10 +195,10 @@ export const Calendar: React.FC<CalendarProps> = ({ trades, onDayClick }) => {
                             <div className="flex flex-col items-end gap-0 z-10 w-full">
                                 {day.stats.count > 0 ? (
                                     <>
-                                        <span className={`${pnlFontSize} font-bold tracking-tight ${pnlColor} leading-tight whitespace-nowrap overflow-hidden`}>
+                                        <span className={`${pnlFontSize} font-bold tracking-tight ${pnlColor} leading-tight whitespace-nowrap overflow-hidden w-full text-right`}>
                                             {day.stats.pnl > 0 ? '+' : ''}{formattedPnl}
                                         </span>
-                                        <span className={`text-[10px] font-medium ${percentColor} leading-tight`}>
+                                        <span className={`text-[10px] font-medium ${percentColor} leading-tight whitespace-nowrap`}>
                                             {day.stats.percent > 0 ? '+' : ''}{day.stats.percent.toFixed(2)}%
                                         </span>
                                         <span className="text-[9px] font-medium text-slate-500 mt-0.5">
@@ -217,12 +213,12 @@ export const Calendar: React.FC<CalendarProps> = ({ trades, onDayClick }) => {
                     );
                 })}
 
-                {/* Week Summary Column - Compressed */}
+                {/* Week Summary Column */}
                 <div className="min-h-[80px] md:min-h-[90px] bg-slate-100 border border-slate-200 rounded-xl p-2 flex flex-col justify-center items-end gap-1">
-                    <span className={`text-lg font-bold ${week.summary.pnl >= 0 ? 'text-success-600' : 'text-danger-600'} leading-tight`}>
+                    <span className={`text-sm md:text-lg font-bold ${week.summary.pnl >= 0 ? 'text-success-600' : 'text-danger-600'} leading-tight whitespace-nowrap`}>
                         {week.summary.pnl > 0 ? '+' : ''}{week.summary.pnl.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 })}
                     </span>
-                    <span className={`text-[10px] font-medium ${week.summary.percent >= 0 ? 'text-success-500' : 'text-danger-500'} leading-tight`}>
+                    <span className={`text-[10px] font-medium ${week.summary.percent >= 0 ? 'text-success-500' : 'text-danger-500'} leading-tight whitespace-nowrap`}>
                         {week.summary.percent > 0 ? '+' : ''}{week.summary.percent.toFixed(2)}%
                     </span>
                     <span className="text-[9px] text-slate-500 mt-0">
