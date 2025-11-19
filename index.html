@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TradeJournal Pro</title>
     
-    <!-- Tailwind CSS -->
+    <!-- 1. Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- 2. Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -14,45 +19,56 @@
             colors: {
               slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a' },
               primary: { 50: '#eef2ff', 100: '#e0e7ff', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
-              success: { 50: '#ecfdf5', 100: '#d1fae5', 400: '#34d399', 500: '#10b981', 600: '#059669' },
-              danger: { 50: '#fef2f2', 100: '#fee2e2', 400: '#f87171', 500: '#ef4444', 600: '#dc2626' }
+              // Enforcing exact chart colors for Green/Red consistency
+              success: { 
+                50: '#ecfdf5', 
+                100: '#d1fae5', 
+                400: '#34d399', // The Chart Green
+                500: '#34d399', // Main Green Text/Bg
+                600: '#059669', 
+                700: '#047857' 
+              },
+              danger: { 
+                50: '#fef2f2', 
+                100: '#fee2e2', 
+                400: '#f87171', // The Chart Red
+                500: '#f87171', // Main Red Text/Bg
+                600: '#dc2626', 
+                700: '#b91c1c' 
+              }
             },
             fontFamily: {
-              sans: ['"Bahnschrift SemiBold SemiConden"', 'Bahnschrift', 'sans-serif'],
+              sans: ['Roboto', 'sans-serif'],
             }
           }
         }
       }
     </script>
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+    <!-- 3. React & Dependencies -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Fixed Recharts Version for Stability -->
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+    
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-      @font-face {
-        font-family: 'Bahnschrift SemiBold SemiConden';
-        src: local('Bahnschrift SemiBold SemiConden'), local('Bahnschrift');
-      }
       body {
-        font-family: 'Bahnschrift SemiBold SemiConden', 'Bahnschrift', sans-serif;
+        font-family: 'Roboto', sans-serif;
         background-color: #f8fafc;
         color: #334155;
       }
       /* Custom Scrollbar */
-      ::-webkit-scrollbar { width: 8px; height: 8px; }
-      ::-webkit-scrollbar-track { background: #f1f5f9; }
-      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-      
-      .hide-scrollbar::-webkit-scrollbar { display: none; }
-      .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      
-      /* Modal Transition */
-      .modal { transition: opacity 0.2s ease-in-out, visibility 0.2s; opacity: 0; visibility: hidden; }
-      .modal.active { opacity: 1; visibility: visible; }
+      .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 <script type="importmap">
 {
@@ -66,886 +82,644 @@
 }
 </script>
 </head>
-<body class="antialiased">
+<body>
+    <div id="root"></div>
 
-    <!-- Main App Container -->
-    <div id="app" class="min-h-screen flex flex-col max-w-7xl mx-auto p-4 md:p-8 space-y-8 pb-24">
+    <!-- Application Logic -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+        // Explicitly grab Recharts from window to avoid ReferenceError
+        const { 
+            LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, 
+            Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar 
+        } = window.Recharts;
         
-        <!-- Header -->
-        <div class="flex items-center justify-center md:justify-start">
-            <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-600/20 mr-3">
-                <span class="text-white font-bold text-xl">Z</span>
-            </div>
-            <h1 class="text-2xl font-bold text-slate-800 tracking-tight">TradeJournal Pro</h1>
-        </div>
+        // Lucide Icons Wrapper
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => { 
+                if(window.lucide) window.lucide.createIcons(); 
+            }, [name]);
+            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
+        };
+        const PlusCircle = (props) => <Icon name="plus-circle" {...props} />;
+        const ArrowUpRight = (props) => <Icon name="arrow-up-right" {...props} />;
+        const ArrowDownRight = (props) => <Icon name="arrow-down-right" {...props} />;
+        const ChevronLeft = (props) => <Icon name="chevron-left" {...props} />;
+        const ChevronRight = (props) => <Icon name="chevron-right" {...props} />;
+        const X = (props) => <Icon name="x" {...props} />;
+        const Save = (props) => <Icon name="save" {...props} />;
+        const Trash2 = (props) => <Icon name="trash-2" {...props} />;
+        const Pencil = (props) => <Icon name="pencil" {...props} />;
+        const Plus = (props) => <Icon name="plus" {...props} />;
 
-        <!-- KPI Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <!-- Total PnL -->
-            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-center gap-1 h-full min-h-[140px]">
-                <div class="flex justify-between items-center">
-                    <span class="text-slate-500 text-sm font-medium">Total Net P/L</span>
-                    <i id="pnl-trend-icon" data-lucide="minus" class="text-slate-400 w-4 h-4"></i>
-                </div>
-                <div>
-                    <div id="total-pnl" class="text-3xl font-bold tracking-tight text-slate-800 mt-1">$0.00</div>
-                    <div class="text-slate-400 text-xs font-medium">All time performance</div>
-                </div>
-            </div>
+        // Constants - Exact Colors
+        const CHART_GREEN = '#34d399';
+        const CHART_RED = '#f87171';
 
-            <!-- Win Rate (Semi-Circle Chart) -->
-            <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between h-full min-h-[140px]">
-                <div class="w-32 h-16 relative mt-4">
-                   <canvas id="winRateChart"></canvas>
-                   <div class="absolute inset-0 flex items-end justify-center pointer-events-none -mb-2">
-                       <span id="win-rate-text" class="text-xl font-bold text-slate-900">0%</span>
-                   </div>
-                </div>
-                <div class="flex flex-col gap-2 pr-4">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-lg bg-success-100 text-success-700 flex items-center justify-center font-bold text-sm" id="win-count">0</div>
-                        <span class="text-xs text-slate-500 font-medium">winners</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-lg bg-danger-100 text-danger-700 flex items-center justify-center font-bold text-sm" id="loss-count">0</div>
-                        <span class="text-xs text-slate-500 font-medium">losers</span>
-                    </div>
-                </div>
-            </div>
+        // --- Services ---
+        const STORAGE_KEY = 'trade_journal_data_v1';
+        const saveTrades = (trades) => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(trades)); } catch (e) {} };
+        const loadTrades = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; } };
 
-            <!-- Detailed Stats -->
-            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm h-full flex flex-col justify-center min-h-[140px]">
-                 <div class="space-y-3">
-                     <div class="flex justify-between items-center border-b border-slate-50 pb-1">
-                         <span class="text-slate-400 text-xs font-medium">Profit Factor</span>
-                         <span id="profit-factor" class="text-sm font-bold text-slate-800">0.00</span>
-                     </div>
-                     <div class="flex justify-between items-center border-b border-slate-50 pb-1">
-                        <span class="text-slate-400 text-xs font-medium">Avg Daily</span>
-                        <span id="avg-daily" class="text-sm font-bold text-slate-800">$0</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-slate-400 text-xs font-medium">Max Drawdown</span>
-                        <span id="max-dd" class="text-sm font-bold text-slate-800">0.0%</span>
-                    </div>
-                 </div>
-            </div>
-        </div>
-
-        <!-- Calendar -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">Calendar Performance</h2>
-                <div class="flex items-center gap-4 bg-slate-50 p-1 rounded-xl border border-slate-200 w-full md:w-64 justify-between">
-                  <button id="prev-month-btn" class="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-slate-600 transition-all shadow-sm">
-                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
-                  </button>
-                  <span id="current-month-label" class="text-sm font-semibold text-slate-700 text-center uppercase tracking-wide flex-grow">...</span>
-                  <button id="next-month-btn" class="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-slate-600 transition-all shadow-sm">
-                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
-                  </button>
-                </div>
-            </div>
+        const calculateStats = (trades) => {
+            if (trades.length === 0) return { totalPnl: 0, winRate: 0, profitFactor: 0, avgDailyProfit: 0, maxDrawdown: 0, totalTrades: 0 };
             
-            <!-- Calendar Grid Header -->
-            <div class="grid grid-cols-6 gap-2 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">
-                <div class="py-2">Mon</div><div class="py-2">Tue</div><div class="py-2">Wed</div><div class="py-2">Thu</div><div class="py-2">Fri</div><div class="py-2 bg-slate-50 rounded">Week</div>
-            </div>
-            <!-- Calendar Grid Body -->
-            <div id="calendar-grid" class="space-y-2"></div>
-        </div>
-
-        <!-- Equity Curve -->
-        <div class="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm">
-            <h3 class="text-slate-500 text-sm font-bold uppercase tracking-wider mb-4">Cumulative Growth</h3>
-            <div class="h-[300px] w-full relative">
-                <canvas id="equityChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Trade List -->
-        <div class="bg-white border border-slate-200 rounded-3xl shadow-sm flex flex-col overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
-                <h2 class="text-xl font-bold text-slate-800">Trades Journal</h2>
-                <button onclick="openModal('add-trade-modal')" class="flex items-center gap-2 text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 px-4 py-2 rounded-xl transition-colors shadow-lg shadow-slate-900/20">
-                    <i data-lucide="plus" class="w-4 h-4"></i> Add Trade
-                </button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm text-slate-600">
-                    <thead class="bg-slate-50 text-xs uppercase font-bold text-slate-400">
-                        <tr>
-                            <th class="px-6 py-4">Date / Time</th>
-                            <th class="px-6 py-4">Ticker</th>
-                            <th class="px-6 py-4">Dir</th>
-                            <th class="px-6 py-4 text-right">Net P/L</th>
-                            <th class="px-6 py-4 text-right">Acc %</th>
-                            <th class="px-6 py-4">Strategy</th>
-                            <th class="px-6 py-4 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="trade-list-body" class="divide-y divide-slate-100 bg-white">
-                        <!-- Rows injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Weekly Report (Mini Calendar) -->
-        <div id="weekly-reports-container" class="bg-white border border-slate-200 rounded-3xl shadow-sm p-6 hidden">
-            <h2 class="text-xl font-bold text-slate-800 mb-4">Weekly Performance History</h2>
-            <div class="grid grid-cols-6 gap-2 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">
-                <div class="py-2">Mon</div><div class="py-2">Tue</div><div class="py-2">Wed</div><div class="py-2">Thu</div><div class="py-2">Fri</div><div class="py-2 bg-slate-50 rounded">Week</div>
-            </div>
-            <div id="weekly-reports-grid" class="space-y-2">
-                <!-- Weekly rows injected here -->
-            </div>
-        </div>
-
-    </div>
-
-    <!-- --- MODALS --- -->
-
-    <!-- Add/Edit Trade Modal -->
-    <div id="add-trade-modal" class="modal fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="flex justify-between items-center p-6 border-b border-slate-100">
-                <h2 id="modal-title" class="text-xl font-bold text-slate-800">Log New Trade</h2>
-                <button onclick="closeModal('add-trade-modal')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
-            </div>
-            <form id="trade-form" class="p-6 overflow-y-auto space-y-6 custom-scrollbar">
-                <input type="hidden" id="trade-id">
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-slate-500">Date</label>
-                        <input required type="date" id="trade-date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary-500">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-slate-500">Time</label>
-                        <input required type="time" id="trade-time" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary-500">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-slate-500">Ticker</label>
-                        <input required type="text" id="trade-ticker" placeholder="XAUUSD" class="w-full uppercase bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary-500">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-slate-500">Direction</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button type="button" id="btn-long" class="py-3 rounded-xl font-bold border transition-all text-slate-500 bg-slate-50 border-slate-200">Buy / Long</button>
-                            <button type="button" id="btn-short" class="py-3 rounded-xl font-bold border transition-all text-slate-500 bg-slate-50 border-slate-200">Sell / Short</button>
-                        </div>
-                        <input type="hidden" id="trade-direction" value="Long">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-slate-500">Account Balance ($)</label>
-                        <input required type="number" id="trade-balance" value="10000" step="any" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary-500">
-                        <p class="text-xs text-slate-400">Used to calc percentage.</p>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-slate-500">Net P/L ($)</label>
-                        <div class="relative">
-                            <input required type="number" id="trade-pnl" step="any" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold outline-none focus:ring-2 focus:ring-primary-500">
-                            <span id="pnl-percent-display" class="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">0.00%</span>
-                        </div>
-                    </div>
-                    <div class="space-y-2 md:col-span-2">
-                        <label class="text-sm font-medium text-slate-500">Strategy</label>
-                        <input type="text" id="trade-setup" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary-500">
-                    </div>
-                    <div class="space-y-2 md:col-span-2">
-                        <label class="text-sm font-medium text-slate-500">Notes</label>
-                        <textarea id="trade-notes" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary-500 resize-none"></textarea>
-                    </div>
-                </div>
-
-                <div class="pt-4 border-t border-slate-100 flex w-full gap-3">
-                    <button type="button" onclick="closeModal('add-trade-modal')" class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold">Cancel</button>
-                    <button type="submit" class="flex-1 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold shadow-lg shadow-slate-900/20">Save Trade</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Day Details Modal -->
-    <div id="day-details-modal" class="modal fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[80vh]">
-            <div class="flex justify-between items-center p-6 border-b border-slate-100">
-                <div>
-                    <h2 id="day-details-title" class="text-xl font-bold text-slate-800">Trades for ...</h2>
-                    <div id="day-details-summary" class="flex items-center gap-4 mt-1 text-sm"></div>
-                </div>
-                <div class="flex gap-2">
-                     <button id="add-trade-day-btn" class="flex items-center gap-2 bg-primary-50 text-primary-600 px-4 py-2 rounded-lg hover:bg-primary-100 transition-colors font-medium text-sm">
-                        <i data-lucide="plus" class="w-4 h-4"></i> Add
-                    </button>
-                    <button onclick="closeModal('day-details-modal')" class="p-2 text-slate-400 hover:bg-slate-50 rounded-lg"><i data-lucide="x" class="w-6 h-6"></i></button>
-                </div>
-            </div>
-            <div id="day-trades-list" class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50">
-                <!-- Trades injected here -->
-            </div>
-        </div>
-    </div>
-
-    <script>
-        /** --- STATE & STORAGE --- */
-        const STORAGE_KEY = 'trade_journal_v1_vanilla';
-        let trades = [];
-        let currentDate = new Date(); // For calendar nav
-        let charts = {}; // Store Chart.js instances
-
-        const loadTrades = () => {
-            try {
-                const data = localStorage.getItem(STORAGE_KEY);
-                trades = data ? JSON.parse(data) : [];
-            } catch (e) { console.error('Error loading trades', e); trades = []; }
-        };
-
-        const saveTrades = () => {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(trades));
-            renderApp();
-        };
-
-        const generateId = () => Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-
-        /** --- HELPERS --- */
-        const formatCurrency = (amount) => {
-             if(amount === 0) return '$0.00';
-             const sign = amount < 0 ? '-' : '+';
-             return `${sign}$${Math.abs(amount).toFixed(2)}`;
-        };
-
-        const getMonday = (d) => {
-            const date = new Date(d);
-            const day = date.getDay();
-            const diff = date.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-            const monday = new Date(date.setDate(diff));
-            monday.setHours(0,0,0,0);
-            return monday;
-        };
-
-        /** --- ANALYTICS --- */
-        const calculateStats = () => {
-            let totalPnl = 0;
-            let wins = 0;
-            let losses = 0;
-            let grossProfit = 0;
-            let grossLoss = 0;
-            let peakBalance = 0;
-            let currentBalance = 0;
-            let maxDrawdown = 0;
-
-            // Infer starting balance logic similar to original app
-            let baseBalance = 10000;
+            let totalPnl = 0, grossProfit = 0, grossLoss = 0, wins = 0;
             const sorted = [...trades].sort((a, b) => a.timestamp - b.timestamp);
-            
-            if (sorted.length > 0 && sorted[0].pnlPercent !== 0) {
-                baseBalance = Math.abs((sorted[0].pnl / sorted[0].pnlPercent) * 100);
-            }
-            
-            currentBalance = baseBalance;
-            peakBalance = baseBalance;
-
             const dailyPnl = {};
 
             sorted.forEach(t => {
                 totalPnl += t.pnl;
-                currentBalance += t.pnl;
-
-                // Drawdown
-                if(currentBalance > peakBalance) peakBalance = currentBalance;
-                const dd = (peakBalance - currentBalance) / peakBalance;
-                if (dd > maxDrawdown) maxDrawdown = dd;
-
-                // Win/Loss
-                if (t.pnl > 0) { wins++; grossProfit += t.pnl; }
-                else if (t.pnl < 0) { losses++; grossLoss += Math.abs(t.pnl); }
-
-                // Daily
-                if(!dailyPnl[t.date]) dailyPnl[t.date] = 0;
-                dailyPnl[t.date] += t.pnl;
+                if (t.pnl > 0) { grossProfit += t.pnl; wins++; }
+                else if (t.pnl < 0) { grossLoss += Math.abs(t.pnl); }
+                dailyPnl[t.date] = (dailyPnl[t.date] || 0) + t.pnl;
             });
 
-            const daysCount = Object.keys(dailyPnl).length;
-            const avgDaily = daysCount > 0 ? totalPnl / daysCount : 0;
             const profitFactor = grossLoss === 0 ? grossProfit : grossProfit / grossLoss;
+            const winRate = (wins / trades.length) * 100;
+            const days = Object.keys(dailyPnl).length;
+            const avgDailyProfit = days > 0 ? totalPnl / days : 0;
 
-            return {
-                totalPnl,
-                wins,
-                losses,
-                count: trades.length,
-                profitFactor,
-                avgDaily,
-                maxDrawdown: maxDrawdown * 100
-            };
-        };
-
-        /** --- RENDERING --- */
-        
-        // 1. KPI Cards
-        const renderStats = () => {
-            const stats = calculateStats();
+            let peak = 0, maxDD = 0, equity = 10000; 
+            if(sorted[0] && sorted[0].pnlPercent !== 0) equity = Math.abs((sorted[0].pnl / sorted[0].pnlPercent) * 100);
+            peak = equity;
             
-            // Net P/L
-            const pnlEl = document.getElementById('total-pnl');
-            pnlEl.textContent = formatCurrency(stats.totalPnl);
-            pnlEl.className = `text-3xl font-bold tracking-tight mt-1 ${stats.totalPnl >= 0 ? 'text-success-600' : 'text-danger-600'}`;
-            
-            const icon = document.getElementById('pnl-trend-icon');
-            // Reset icon
-            icon.setAttribute('data-lucide', stats.totalPnl >= 0 ? 'arrow-up-right' : 'arrow-down-right');
-            icon.className = `w-5 h-5 ${stats.totalPnl >= 0 ? 'text-success-500' : 'text-danger-500'}`;
-
-            // Win Rate Widget
-            document.getElementById('win-count').textContent = stats.wins;
-            document.getElementById('loss-count').textContent = stats.losses;
-            const winRate = stats.count > 0 ? ((stats.wins / stats.count) * 100).toFixed(0) : 0;
-            document.getElementById('win-rate-text').textContent = `${winRate}%`;
-            // Changed to black as requested
-            document.getElementById('win-rate-text').className = `text-xl font-bold text-slate-900`;
-
-            // Detailed Stats
-            document.getElementById('profit-factor').textContent = stats.profitFactor.toFixed(2);
-            document.getElementById('avg-daily').textContent = formatCurrency(Math.round(stats.avgDaily));
-            document.getElementById('max-dd').textContent = `${stats.maxDrawdown.toFixed(1)}%`;
-
-            renderCharts(stats.wins, stats.losses);
-            lucide.createIcons();
-        };
-
-        // 2. Charts (Chart.js)
-        const renderCharts = (wins, losses) => {
-            // Win Rate Doughnut (Semi-Circle)
-            const ctxWin = document.getElementById('winRateChart').getContext('2d');
-            if (charts.win) charts.win.destroy();
-            
-            charts.win = new Chart(ctxWin, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Wins', 'Losses'],
-                    datasets: [{
-                        data: (wins === 0 && losses === 0) ? [0, 0] : [wins, losses], // if empty dont show
-                        backgroundColor: (wins === 0 && losses === 0) ? ['#e2e8f0', '#e2e8f0'] : ['#34d399', '#f87171'],
-                        borderWidth: 0,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    circumference: 180, // Semi-circle
-                    rotation: -90, // Start from left
-                    cutout: '75%',
-                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                    events: [] 
-                }
-            });
-
-            // Equity Curve
-            const ctxEquity = document.getElementById('equityChart').getContext('2d');
-            const sortedTrades = [...trades].sort((a, b) => a.timestamp - b.timestamp);
-            
-            let balance = 0;
-            const dataPoints = sortedTrades.map(t => {
-                balance += t.pnl;
-                return { x: t.date, y: balance };
-            });
-            // Add start point
-            dataPoints.unshift({ x: 'Start', y: 0 });
-
-            if (charts.equity) charts.equity.destroy();
-
-            charts.equity = new Chart(ctxEquity, {
-                type: 'line',
-                data: {
-                    labels: dataPoints.map(d => d.x),
-                    datasets: [{
-                        label: 'Net P/L',
-                        data: dataPoints.map(d => d.y),
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.05)',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        pointHoverRadius: 4,
-                        fill: true,
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { maxTicksLimit: 6, font: {size: 10} } },
-                        y: { grid: { borderDash: [4, 4], color: '#f1f5f9' }, ticks: { font: {size: 10}, callback: (val) => '$' + val } }
-                    },
-                    interaction: { mode: 'index', intersect: false }
-                }
-            });
-        };
-
-        // 3. Calendar
-        const getDayStats = (dateStr) => {
-            const dayTrades = trades.filter(t => t.date === dateStr);
-            return {
-                pnl: dayTrades.reduce((sum, t) => sum + t.pnl, 0),
-                percent: dayTrades.reduce((sum, t) => sum + t.pnlPercent, 0),
-                count: dayTrades.length
-            };
-        };
-
-        const renderCalendar = () => {
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            
-            // Header Label
-            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            document.getElementById('current-month-label').textContent = `${monthNames[month]} ${year}`;
-
-            // Grid Logic
-            const firstDay = new Date(year, month, 1);
-            const startDay = firstDay.getDay();
-            const daysFromMonday = startDay === 0 ? 6 : startDay - 1;
-            
-            const startDate = new Date(firstDay);
-            startDate.setDate(startDate.getDate() - daysFromMonday);
-
-            const gridEl = document.getElementById('calendar-grid');
-            gridEl.innerHTML = '';
-
-            let current = new Date(startDate);
-            const todayStr = new Date().toISOString().split('T')[0];
-
-            // Loop 6 weeks maximum
-            for (let w = 0; w < 6; w++) {
-                let weekRow = document.createElement('div');
-                weekRow.className = 'grid grid-cols-6 gap-2';
-                
-                let weekPnl = 0;
-                let weekPercent = 0;
-                let weekCount = 0;
-                let hasDaysInMonth = false;
-                
-                let rowHtmlBuffer = [];
-
-                // Mon-Fri Loop
-                for (let d = 0; d < 5; d++) {
-                    const dateStr = current.toISOString().split('T')[0];
-                    const stats = getDayStats(dateStr);
-                    const isCurrentMonth = current.getMonth() === month;
-
-                    if(isCurrentMonth) hasDaysInMonth = true;
-
-                    weekPnl += stats.pnl;
-                    weekPercent += stats.percent;
-                    weekCount += stats.count;
-
-                    // Render Cell
-                    let bgClass = "bg-slate-50/50 border-slate-100 hover:bg-white hover:shadow-md";
-                    let textClass = "text-slate-400";
-                    
-                    if (stats.count > 0) {
-                        if (stats.pnl > 0) { bgClass = "bg-success-50 border-success-100"; textClass = "text-success-600"; }
-                        else if (stats.pnl < 0) { bgClass = "bg-danger-50 border-danger-100"; textClass = "text-danger-600"; }
-                        else { bgClass = "bg-white border-slate-200"; textClass = "text-slate-600"; }
-                    }
-
-                    const isToday = dateStr === todayStr;
-
-                    const pnlText = stats.count > 0 ? (stats.pnl > 0 ? '+' : '') + Math.round(stats.pnl) : '-';
-                    const percentText = stats.count > 0 ? (stats.percent > 0 ? '+' : '') + stats.percent.toFixed(1) + '%' : '';
-
-                    const cellHtml = `
-                        <div onclick="openDayDetails('${dateStr}')" class="min-h-[80px] border rounded-xl p-2 flex flex-col justify-between cursor-pointer transition-all relative overflow-hidden ${bgClass} ${isToday ? 'ring-2 ring-primary-500' : ''} ${!isCurrentMonth ? 'opacity-40' : ''}">
-                             <div class="text-xs font-semibold ${isToday ? 'text-primary-600' : 'text-slate-500'}">${current.getDate()}</div>
-                             <div class="flex flex-col items-end">
-                                 <span class="text-sm font-bold ${textClass}">${pnlText}</span>
-                                 ${stats.count > 0 ? `<span class="text-[10px] font-medium ${textClass}">${percentText}</span>` : ''}
-                             </div>
-                        </div>
-                    `;
-                    rowHtmlBuffer.push(cellHtml);
-                    
-                    current.setDate(current.getDate() + 1);
-                }
-
-                // Account for Sat/Sun in weekly stats
-                for(let we=0; we<2; we++){
-                     const dateStr = current.toISOString().split('T')[0];
-                     const stats = getDayStats(dateStr);
-                     weekPnl += stats.pnl;
-                     weekPercent += stats.percent;
-                     weekCount += stats.count;
-                     if(current.getMonth() === month) hasDaysInMonth = true;
-                     current.setDate(current.getDate() + 1);
-                }
-                
-                if (hasDaysInMonth) {
-                    rowHtmlBuffer.forEach(html => {
-                         const wrap = document.createElement('div');
-                         wrap.innerHTML = html;
-                         weekRow.appendChild(wrap.firstElementChild);
-                    });
-
-                    const summaryCell = document.createElement('div');
-                    summaryCell.className = "min-h-[80px] bg-slate-100 border border-slate-200 rounded-xl p-2 flex flex-col justify-center items-end gap-1";
-                    
-                    const pnlFormatted = weekPnl === 0 ? '$0' : formatCurrency(Math.round(weekPnl)).replace('.00', '');
-                    const pctFormatted = weekPercent === 0 ? '0.00%' : (weekPercent > 0 ? '+' : '') + weekPercent.toFixed(2) + '%';
-                    
-                    summaryCell.innerHTML = `
-                        <span class="text-sm font-bold ${weekPnl >= 0 ? 'text-success-600' : 'text-danger-600'}">${pnlFormatted}</span>
-                         <span class="text-[10px] font-bold ${weekPercent >= 0 ? 'text-success-500' : 'text-danger-500'}">${pctFormatted}</span>
-                        <span class="text-[9px] text-slate-500">${weekCount} Trades</span>
-                    `;
-                    weekRow.appendChild(summaryCell);
-                    gridEl.appendChild(weekRow);
-                } else {
-                     if(w > 0) break;
-                }
-            }
-        };
-
-        // 4. Trade List
-        const renderTradeList = () => {
-            const tbody = document.getElementById('trade-list-body');
-            tbody.innerHTML = '';
-            
-            const sorted = [...trades].sort((a, b) => b.timestamp - a.timestamp);
-
-            if (sorted.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-slate-400">No trades found.</td></tr>`;
-                return;
-            }
-
             sorted.forEach(t => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50/80 transition-colors group border-b border-slate-50 last:border-0";
-                
-                const pnlColor = t.pnl > 0 ? 'text-success-600' : t.pnl < 0 ? 'text-danger-600' : 'text-slate-600';
-                const pnlPctColor = t.pnlPercent > 0 ? 'text-success-500' : t.pnlPercent < 0 ? 'text-danger-500' : 'text-slate-500';
-                
-                const dirBadge = t.direction === 'Long' 
-                    ? 'bg-success-500 text-white shadow-sm' 
-                    : 'bg-danger-500 text-white shadow-sm';
-
-                tr.innerHTML = `
-                    <td class="px-6 py-4">
-                        <div class="text-slate-700">${t.date}</div>
-                        <div class="text-xs text-slate-400">${t.time}</div>
-                    </td>
-                    <td class="px-6 py-4 font-bold text-slate-800">${t.ticker}</td>
-                    <td class="px-6 py-4"><span class="inline-flex items-center px-2 py-1 rounded text-xs font-bold border-0 ${dirBadge}">${t.direction}</span></td>
-                    <td class="px-6 py-4 text-right font-bold text-base ${pnlColor}">${formatCurrency(t.pnl)}</td>
-                    <td class="px-6 py-4 text-right font-bold text-base ${pnlPctColor}">${t.pnlPercent > 0 ? '+' : ''}${t.pnlPercent.toFixed(2)}%</td>
-                    <td class="px-6 py-4 text-slate-500 truncate max-w-[150px]">${t.setup || '-'}</td>
-                    <td class="px-6 py-4 text-right">
-                        <div class="flex justify-end gap-2">
-                            <button class="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg edit-btn" data-id="${t.id}"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-                            <button class="p-2 text-slate-400 hover:text-danger-600 hover:bg-danger-50 rounded-lg del-btn" data-id="${t.id}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+                equity += t.pnl;
+                if (equity > peak) peak = equity;
+                const dd = (peak - equity) / peak;
+                if (dd > maxDD) maxDD = dd;
             });
 
-            // Attach listeners
-            document.querySelectorAll('.edit-btn').forEach(b => b.onclick = (e) => {
-                e.stopPropagation();
-                openEditModal(b.dataset.id);
-            });
-            document.querySelectorAll('.del-btn').forEach(b => b.onclick = (e) => {
-                e.stopPropagation();
-                if(confirm('Delete trade?')) {
-                    trades = trades.filter(x => x.id !== b.dataset.id);
-                    saveTrades();
-                }
-            });
-            
-            lucide.createIcons();
+            return { totalPnl, winRate, profitFactor, avgDailyProfit, maxDrawdown: maxDD * 100, totalTrades: trades.length };
         };
 
-        // 5. Weekly Performance Report (Mini Calendar)
-        const renderWeeklyReport = () => {
-             const container = document.getElementById('weekly-reports-container');
-             const grid = document.getElementById('weekly-reports-grid');
-             grid.innerHTML = '';
+        // --- Components ---
 
-             if(trades.length === 0) {
-                container.classList.add('hidden');
-                return;
-             }
-             container.classList.remove('hidden');
-
-             // Group trades by Week
-             const weeksMap = new Map();
-             
-             trades.forEach(t => {
-                 const monday = getMonday(new Date(t.date));
-                 const time = monday.getTime();
-                 if(!weeksMap.has(time)) weeksMap.set(time, []);
-                 weeksMap.get(time).push(t);
-             });
-
-             // Sort descending by date
-             const sortedWeeks = Array.from(weeksMap.entries()).sort((a,b) => b[0] - a[0]);
-
-             sortedWeeks.forEach(([timestamp, weekTrades]) => {
-                 const mondayDate = new Date(timestamp);
-                 const weekPnl = weekTrades.reduce((sum, t) => sum + t.pnl, 0);
-                 const weekPercent = weekTrades.reduce((sum, t) => sum + t.pnlPercent, 0);
-                 const weekCount = weekTrades.length;
-
-                 const weekRow = document.createElement('div');
-                 weekRow.className = 'grid grid-cols-6 gap-2';
-
-                 // Render Mon-Fri
-                 let current = new Date(mondayDate);
-                 for(let i=0; i<5; i++){
-                     const y = current.getFullYear();
-                     const m = String(current.getMonth()+1).padStart(2, '0');
-                     const d = String(current.getDate()).padStart(2, '0');
-                     const dateStr = `${y}-${m}-${d}`;
-                     
-                     const dayTrades = weekTrades.filter(t => t.date === dateStr);
-                     const dayPnl = dayTrades.reduce((s, t) => s + t.pnl, 0);
-                     const dayPercent = dayTrades.reduce((s, t) => s + t.pnlPercent, 0);
-                     const dayCount = dayTrades.length;
-
-                     let bgClass = "bg-slate-50/50 border-slate-100";
-                     let pnlColor = "text-slate-400";
-                     
-                     if (dayCount > 0) {
-                        if (dayPnl > 0) { bgClass = "bg-success-50 border-success-100"; pnlColor = "text-success-600"; }
-                        else if (dayPnl < 0) { bgClass = "bg-danger-50 border-danger-100"; pnlColor = "text-danger-600"; }
-                        else { bgClass = "bg-white border-slate-200"; pnlColor = "text-slate-600"; }
-                     }
-
-                     const displayDate = current.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-                     const cell = document.createElement('div');
-                     cell.className = `min-h-[60px] border rounded-xl p-2 flex flex-col justify-between relative overflow-hidden ${bgClass}`;
-                     cell.innerHTML = `
-                         <div class="flex justify-between items-start">
-                            <span class="text-[9px] font-semibold text-slate-400 whitespace-nowrap overflow-hidden">${displayDate}</span>
-                         </div>
-                         <div class="text-right flex flex-col justify-end h-full">
-                             ${dayCount > 0 ? `
-                                <div class="text-xs font-bold leading-none whitespace-nowrap ${pnlColor}">${dayPnl > 0 ? '+' : ''}${Math.round(dayPnl)}</div>
-                                <div class="text-[8px] font-medium leading-tight whitespace-nowrap ${dayPercent >= 0 ? 'text-success-500' : 'text-danger-500'}">${dayPercent > 0 ? '+' : ''}${dayPercent.toFixed(1)}%</div>
-                             ` : '<span class="text-slate-300 text-sm">-</span>'}
-                         </div>
-                     `;
-                     weekRow.appendChild(cell);
-                     current.setDate(current.getDate() + 1);
-                 }
-
-                 // Summary Cell
-                 const summary = document.createElement('div');
-                 summary.className = "min-h-[60px] bg-slate-100 border border-slate-200 rounded-xl p-2 flex flex-col justify-center items-end relative overflow-hidden";
-                 summary.innerHTML = `
-                    <span class="text-xs font-bold whitespace-nowrap ${weekPnl >= 0 ? 'text-success-600' : 'text-danger-600'}">${weekPnl > 0 ? '+' : ''}${Math.round(weekPnl)}</span>
-                    <span class="text-[8px] font-medium whitespace-nowrap ${weekPercent >= 0 ? 'text-success-500' : 'text-danger-500'}">${weekPercent > 0 ? '+' : ''}${weekPercent.toFixed(2)}%</span>
-                 `;
-                 weekRow.appendChild(summary);
-                 grid.appendChild(weekRow);
-             });
-        };
-
-        const renderApp = () => {
-            renderStats();
-            renderCalendar();
-            renderTradeList();
-            renderWeeklyReport();
-        };
-
-        /** --- MODALS & FORMS --- */
-        
-        const openModal = (id) => {
-            document.getElementById(id).classList.add('active');
-            if(id === 'add-trade-modal') {
-                // Reset form
-                document.getElementById('trade-form').reset();
-                document.getElementById('trade-id').value = '';
-                document.getElementById('modal-title').textContent = 'Log New Trade';
-                
-                // Defaults
-                const now = new Date();
-                document.getElementById('trade-date').value = now.toISOString().split('T')[0];
-                document.getElementById('trade-time').value = now.toTimeString().slice(0,5);
-                
-                // Default Ticker
-                document.getElementById('trade-ticker').value = 'XAUUSD';
-                
-                updateDirectionUI('Long');
-                document.getElementById('pnl-percent-display').textContent = '0.00%';
-                
-                // Auto Focus PnL after transition
-                setTimeout(() => {
-                    document.getElementById('trade-pnl').focus();
-                }, 100);
-            }
-        };
-
-        const closeModal = (id) => document.getElementById(id).classList.remove('active');
-
-        const openEditModal = (tradeId) => {
-            const t = trades.find(x => x.id === tradeId);
-            if(!t) return;
-            
-            openModal('add-trade-modal');
-            document.getElementById('modal-title').textContent = 'Edit Trade';
-            document.getElementById('trade-id').value = t.id;
-            document.getElementById('trade-date').value = t.date;
-            document.getElementById('trade-time').value = t.time;
-            document.getElementById('trade-ticker').value = t.ticker;
-            document.getElementById('trade-pnl').value = t.pnl;
-            document.getElementById('trade-setup').value = t.setup || '';
-            document.getElementById('trade-notes').value = t.notes || '';
-            
-            // Reverse Calc Balance approx
-            let bal = 10000;
-            if(t.pnlPercent !== 0) bal = (t.pnl / t.pnlPercent) * 100;
-            document.getElementById('trade-balance').value = Math.abs(bal).toFixed(2);
-            
-            updateDirectionUI(t.direction);
-            updatePercentCalc();
-        };
-
-        const openDayDetails = (date) => {
-            const dayTrades = trades.filter(t => t.date === date);
-            const pnl = dayTrades.reduce((s, t) => s + t.pnl, 0);
-            
-            document.getElementById('day-details-title').textContent = `Trades for ${date}`;
-            const summary = document.getElementById('day-details-summary');
-            summary.innerHTML = `
-                <span class="font-bold ${pnl >= 0 ? 'text-success-600' : 'text-danger-600'}">Net: ${formatCurrency(pnl)}</span>
-                <span class="text-slate-400">${dayTrades.length} Trades</span>
-            `;
-            
-            const list = document.getElementById('day-trades-list');
-            list.innerHTML = '';
-            dayTrades.forEach(t => {
-                const div = document.createElement('div');
-                div.className = "bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex justify-between items-center";
-                div.innerHTML = `
-                    <div>
-                        <div class="font-bold text-slate-800 flex items-center gap-2">
-                            ${t.ticker} 
-                            <span class="text-[10px] px-1.5 py-0.5 rounded border ${t.direction === 'Long' ? 'bg-success-50 border-success-100 text-success-600' : 'bg-danger-50 border-danger-100 text-danger-600'}">${t.direction}</span>
-                        </div>
-                        <div class="text-xs text-slate-400">${t.time} | ${t.setup || 'No setup'}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-bold ${t.pnl >= 0 ? 'text-success-600' : 'text-danger-600'}">${formatCurrency(t.pnl)}</div>
-                        <div class="flex gap-2 mt-1 justify-end">
-                            <button class="text-slate-400 hover:text-primary-600 edit-day-btn" data-id="${t.id}"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-                            <button class="text-slate-400 hover:text-danger-600 del-day-btn" data-id="${t.id}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        // 1. Stat Card (Fixed Layout for Matching Heights)
+        const StatCard = ({ title, value, subValue, trend, chartData, items }) => {
+            // List View (Bottom Right Card)
+            if (items) {
+                return (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all h-full flex flex-col justify-center">
+                        <div className="flex flex-col justify-center w-full">
+                            {items.map((item, idx) => (
+                                <div key={idx} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0 last:pb-0">
+                                    <span className="text-slate-400 text-xs font-medium">{item.label}</span>
+                                    <span className={`text-sm font-bold ${item.highlight ? 'text-slate-800' : 'text-slate-600'}`}>{item.value}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                `;
-                list.appendChild(div);
-            });
-            
-            document.querySelectorAll('.edit-day-btn').forEach(b => b.onclick = () => {
-                closeModal('day-details-modal');
-                openEditModal(b.dataset.id);
-            });
-            
-             document.querySelectorAll('.del-day-btn').forEach(b => b.onclick = () => {
-                if(confirm('Delete trade?')) {
-                    trades = trades.filter(x => x.id !== b.dataset.id);
-                    saveTrades();
-                    openDayDetails(date); // Refresh
-                }
-            });
-
-            document.getElementById('add-trade-day-btn').onclick = () => {
-                closeModal('day-details-modal');
-                openModal('add-trade-modal');
-                document.getElementById('trade-date').value = date;
-            };
-
-            openModal('day-details-modal');
-            lucide.createIcons();
-        };
-
-        // Form Logic
-        const updateDirectionUI = (dir) => {
-            document.getElementById('trade-direction').value = dir;
-            const btnLong = document.getElementById('btn-long');
-            const btnShort = document.getElementById('btn-short');
-            
-            if (dir === 'Long') {
-                btnLong.className = "py-3 rounded-xl font-bold border transition-all bg-success-500 text-white border-success-600 shadow-lg shadow-success-500/30";
-                btnShort.className = "py-3 rounded-xl font-bold border transition-all text-slate-500 bg-slate-50 border-slate-200 hover:bg-slate-100";
-            } else {
-                btnShort.className = "py-3 rounded-xl font-bold border transition-all bg-danger-500 text-white border-danger-600 shadow-lg shadow-danger-500/30";
-                btnLong.className = "py-3 rounded-xl font-bold border transition-all text-slate-500 bg-slate-50 border-slate-200 hover:bg-slate-100";
+                );
             }
+
+            // Chart View (Total Net P/L) - Equal Height Logic, Centered Content
+            if (chartData) {
+                // Determine colors based on trend/value (Green/Red)
+                const isPositive = parseFloat(String(value).replace(/[^0-9.-]/g, '')) >= 0;
+                const colorHex = isPositive ? CHART_GREEN : CHART_RED;
+                const textColorClass = isPositive ? 'text-success-500' : 'text-danger-500';
+
+                return (
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden h-full flex items-stretch">
+                        <div className="flex flex-col justify-center z-10 flex-shrink-0 pl-6 py-4 pr-2">
+                            <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-slate-500 text-sm font-medium">{title}</span>
+                                {trend === 'up' && <ArrowUpRight size={14} className="text-success-500" />}
+                                {trend === 'down' && <ArrowDownRight size={14} className="text-danger-500" />}
+                            </div>
+                            <div className={`text-3xl font-bold tracking-tight ${textColorClass}`}>
+                                {value}
+                            </div>
+                        </div>
+                        <div className="flex-1 min-w-[100px] relative">
+                            <div className="absolute inset-0 pt-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={chartData}>
+                                        <defs>
+                                            <linearGradient id={`colorGradient-${isPositive?'pos':'neg'}`} x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={colorHex} stopOpacity={0.2}/>
+                                                <stop offset="95%" stopColor={colorHex} stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <Area type="monotone" dataKey="value" stroke={colorHex} strokeWidth={2} fillOpacity={1} fill={`url(#colorGradient-${isPositive?'pos':'neg'})`} isAnimationActive={false} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+            return null;
         };
 
-        const updatePercentCalc = () => {
-            const pnl = parseFloat(document.getElementById('trade-pnl').value) || 0;
-            const bal = parseFloat(document.getElementById('trade-balance').value) || 1;
-            const pct = (pnl / bal) * 100;
-            const el = document.getElementById('pnl-percent-display');
-            el.textContent = (pct > 0 ? '+' : '') + pct.toFixed(2) + '%';
-            el.className = `absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold ${pct > 0 ? 'text-success-500' : pct < 0 ? 'text-danger-500' : 'text-slate-400'}`;
+        // 2. Win Rate Widget - 60/40 Split & Colors
+        const WinRateWidget = ({ trades }) => {
+            const wins = trades.filter(t => t.pnl > 0).length;
+            const losses = trades.filter(t => t.pnl < 0).length;
+            const total = trades.length;
+            const winRate = total > 0 ? (wins / total) * 100 : 0;
+
+            const data = [
+                { name: 'Win', value: wins, color: CHART_GREEN },
+                { name: 'Loss', value: losses, color: CHART_RED },
+            ];
+            if (total === 0) { data[0].value = 0; data[1].value = 1; data[1].color = '#e2e8f0'; }
+
+            return (
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center h-full relative p-0 overflow-hidden">
+                    
+                    {/* 60% Chart Area - Centered */}
+                    <div className="w-[60%] h-full flex items-center justify-center relative">
+                        <div className="w-full h-[130px]">
+                             <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={data} cx="50%" cy="50%" startAngle={180} endAngle={0} innerRadius={60} outerRadius={85} paddingAngle={0} dataKey="value" stroke="none">
+                                        {data.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                    </Pie>
+                                </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pt-6 pointer-events-none">
+                                <span className="text-2xl font-bold text-slate-800 leading-none">{Math.round(winRate)}<span className="text-sm">%</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 40% Legend Area - Centered Vertically */}
+                    <div className="w-[40%] h-full flex flex-col justify-center gap-3 border-l border-slate-50 px-4 bg-slate-50/30">
+                        <div className="flex flex-col gap-1">
+                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Wins</span>
+                           <div className="flex items-center gap-2">
+                               <div className="px-2.5 py-1 rounded-md font-bold text-sm shadow-sm bg-success-100 text-success-700 border border-success-100">
+                                   {wins}
+                               </div>
+                           </div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Losses</span>
+                           <div className="flex items-center gap-2">
+                               <div className="px-2.5 py-1 rounded-md font-bold text-sm shadow-sm bg-danger-100 text-danger-700 border border-danger-100">
+                                   {losses}
+                               </div>
+                           </div>
+                        </div>
+                    </div>
+                </div>
+            );
         };
 
-        // Event Listeners Setup
-        document.addEventListener('DOMContentLoaded', () => {
-            loadTrades();
-            renderApp();
-
-            // Navigation
-            document.getElementById('prev-month-btn').onclick = () => {
-                currentDate.setMonth(currentDate.getMonth() - 1);
-                renderCalendar();
-            };
-            document.getElementById('next-month-btn').onclick = () => {
-                currentDate.setMonth(currentDate.getMonth() + 1);
-                renderCalendar();
-            };
-
-            // Form Interactions
-            document.getElementById('btn-long').onclick = () => updateDirectionUI('Long');
-            document.getElementById('btn-short').onclick = () => updateDirectionUI('Short');
-            document.getElementById('trade-pnl').oninput = updatePercentCalc;
-            document.getElementById('trade-balance').oninput = updatePercentCalc;
-
-            // Save Trade
-            document.getElementById('trade-form').onsubmit = (e) => {
-                e.preventDefault();
-                const id = document.getElementById('trade-id').value || generateId();
-                const pnl = parseFloat(document.getElementById('trade-pnl').value);
-                const bal = parseFloat(document.getElementById('trade-balance').value);
-                
-                const newTrade = {
-                    id,
-                    date: document.getElementById('trade-date').value,
-                    time: document.getElementById('trade-time').value,
-                    ticker: document.getElementById('trade-ticker').value.toUpperCase(),
-                    direction: document.getElementById('trade-direction').value,
-                    pnl: pnl,
-                    pnlPercent: (pnl/bal)*100,
-                    status: pnl > 0 ? 'Win' : pnl < 0 ? 'Loss' : 'Break Even',
-                    setup: document.getElementById('trade-setup').value,
-                    notes: document.getElementById('trade-notes').value,
-                    timestamp: new Date(`${document.getElementById('trade-date').value}T${document.getElementById('trade-time').value}`).getTime()
+        // 3. Calendar - Font Sizing Logic
+        const Calendar = ({ trades, onDayClick }) => {
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            
+            const getDayStats = (dateStr) => {
+                const dayTrades = trades.filter(t => t.date === dateStr);
+                return {
+                    pnl: dayTrades.reduce((sum, t) => sum + t.pnl, 0),
+                    percent: dayTrades.reduce((sum, t) => sum + t.pnlPercent, 0),
+                    count: dayTrades.length
                 };
-
-                const existingIdx = trades.findIndex(t => t.id === id);
-                if (existingIdx > -1) trades[existingIdx] = newTrade;
-                else trades.push(newTrade);
-
-                saveTrades();
-                closeModal('add-trade-modal');
             };
-        });
 
+            const renderWeeks = () => {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                const firstDay = new Date(year, month, 1, 12, 0, 0, 0);
+                const startDay = firstDay.getDay(); 
+                const daysFromMon = startDay === 0 ? 6 : startDay - 1;
+                const start = new Date(firstDay);
+                start.setDate(start.getDate() - daysFromMon);
+                
+                const weeks = [];
+                let current = new Date(start);
+                
+                for(let w=0; w<6; w++) {
+                    const weekDays = [];
+                    let weekPnl = 0;
+                    let weekPercent = 0;
+                    let weekCount = 0;
+                    let hasDaysInMonth = false;
+
+                    for(let d=0; d<7; d++) {
+                        const y = current.getFullYear();
+                        const m = String(current.getMonth()+1).padStart(2,'0');
+                        const dayNum = String(current.getDate()).padStart(2,'0');
+                        const dateStr = `${y}-${m}-${dayNum}`;
+
+                        const stats = getDayStats(dateStr);
+                        const isCurrentMonth = current.getMonth() === month;
+                        if(isCurrentMonth) hasDaysInMonth = true;
+
+                        weekPnl += stats.pnl;
+                        weekPercent += stats.percent;
+                        weekCount += stats.count;
+
+                        if(d < 5) weekDays.push({ date: dateStr, dayNum: current.getDate(), isCurrentMonth, stats });
+                        current.setDate(current.getDate() + 1);
+                    }
+                    if(hasDaysInMonth || weeks.length === 0) {
+                        weeks.push({ days: weekDays, summary: { pnl: weekPnl, percent: weekPercent, count: weekCount } });
+                    } else { break; }
+                }
+                return weeks;
+            };
+
+            const weeks = renderWeeks();
+            const todayObj = new Date();
+            const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth()+1).padStart(2,'0')}-${String(todayObj.getDate()).padStart(2,'0')}`;
+
+            return (
+                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-xl font-bold text-slate-800">Calendar Performance</h2>
+                        <div className="flex items-center gap-4 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                            <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()-1, 1))} className="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-slate-600"><ChevronLeft size={20}/></button>
+                            <span className="text-sm font-semibold text-slate-700 uppercase w-32 text-center">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</span>
+                            <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 1))} className="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-slate-600"><ChevronRight size={20}/></button>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-6 gap-2 mb-2">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Wk'].map((d, i) => (
+                            <div key={i} className={`text-xs font-bold text-slate-400 uppercase text-center py-2 ${i===5?'bg-slate-50 rounded-lg':''}`}>{d}</div>
+                        ))}
+                    </div>
+                    <div className="space-y-2">
+                        {weeks.map((week, wIdx) => (
+                            <div key={wIdx} className="grid grid-cols-6 gap-2">
+                                {week.days.map((day, dIdx) => {
+                                    let bg = "bg-slate-50/50 border-slate-100 hover:bg-white hover:shadow-md";
+                                    let txt = "text-slate-400";
+                                    // Using custom style for background opacity to match chart colors exact shade
+                                    let customStyle = {};
+
+                                    if(day.stats.count > 0) {
+                                        if(day.stats.pnl > 0) { 
+                                            // Green Background
+                                            customStyle = { backgroundColor: `${CHART_GREEN}1A`, borderColor: `${CHART_GREEN}33` };
+                                            txt = "text-success-500"; 
+                                        } else if(day.stats.pnl < 0) { 
+                                            // Red Background
+                                            customStyle = { backgroundColor: `${CHART_RED}1A`, borderColor: `${CHART_RED}33` };
+                                            txt = "text-danger-500"; 
+                                        } else { 
+                                            bg = "bg-white border-slate-200"; txt = "text-slate-600"; 
+                                        }
+                                    }
+                                    const isToday = day.date === todayStr;
+                                    
+                                    // Dynamic font size logic - Robust shrink to fit
+                                    const pnlStr = day.stats.pnl.toLocaleString('en-US', {style:'currency', currency:'USD', minimumFractionDigits:0});
+                                    const charCount = pnlStr.length;
+                                    let pnlSize = "text-sm"; 
+                                    if(charCount > 8) pnlSize = "text-[9px]"; 
+                                    else if(charCount > 6) pnlSize = "text-[10px]";
+                                    else if(charCount > 5) pnlSize = "text-xs";
+                                    else pnlSize = "text-sm md:text-base";
+                                    
+                                    return (
+                                        <div key={dIdx} onClick={() => onDayClick(day.date)} 
+                                            style={Object.keys(customStyle).length ? customStyle : {}}
+                                            className={`min-h-[80px] border rounded-xl p-2 flex flex-col justify-between cursor-pointer transition-all relative overflow-hidden ${bg} ${isToday ? 'ring-2 ring-primary-500':''} ${!day.isCurrentMonth?'opacity-40':''}`}>
+                                            <div className="flex justify-between"><span className={`text-xs font-semibold ${isToday ? 'text-primary-600':'text-slate-500'}`}>{day.dayNum}</span></div>
+                                            <div className="text-right w-full flex flex-col items-end">
+                                                {day.stats.count > 0 ? (
+                                                    <>
+                                                        <div className={`${pnlSize} font-bold leading-tight whitespace-nowrap ${txt}`}>{day.stats.pnl>0?'+':''}{pnlStr}</div>
+                                                        <div className={`text-[9px] font-medium leading-tight ${day.stats.percent>0?'text-success-500':'text-danger-500'}`}>{day.stats.percent>0?'+':''}{day.stats.percent.toFixed(1)}%</div>
+                                                    </>
+                                                ) : <span className="text-slate-300">-</span>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {/* Week Summary */}
+                                <div className="min-h-[80px] bg-slate-100 border border-slate-200 rounded-xl p-2 flex flex-col justify-center items-end">
+                                    <span className={`text-xs font-bold whitespace-nowrap ${week.summary.pnl>=0?'text-success-500':'text-danger-500'}`}>{week.summary.pnl>0?'+':''}${Math.round(week.summary.pnl).toLocaleString()}</span>
+                                    <span className={`text-[9px] whitespace-nowrap ${week.summary.percent>=0?'text-success-500':'text-danger-500'}`}>{week.summary.percent>0?'+':''}{week.summary.percent.toFixed(1)}%</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // 4. Trade List - Fixed Height, Compact, No Strategy, Uniform Colors
+        const TradeList = ({ trades, onEdit, onDelete, onAdd }) => {
+            const sorted = [...trades].sort((a, b) => b.timestamp - a.timestamp);
+            // Fixed height for approximately 5 rows + header
+            return (
+                <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden flex flex-col h-[320px]">
+                    <div className="p-4 border-b border-slate-100 flex justify-between items-center shrink-0 bg-white">
+                        <h2 className="text-lg font-bold text-slate-800">Trades Journal</h2>
+                        <button onClick={onAdd} className="flex items-center gap-2 bg-slate-900 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm"><Plus size={14}/> Add Trade</button>
+                    </div>
+                    <div className="overflow-y-auto custom-scrollbar flex-1">
+                        <table className="w-full text-left text-sm text-slate-600 relative">
+                            <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th className="px-6 py-3">Date / Time</th>
+                                    <th className="px-6 py-3">Ticker</th>
+                                    <th className="px-6 py-3">Dir</th>
+                                    <th className="px-6 py-3 text-right">Net P/L</th>
+                                    <th className="px-6 py-3 text-right">%</th>
+                                    <th className="px-6 py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {sorted.length === 0 ? <tr><td colSpan="6" className="text-center py-8 text-slate-400">No trades yet.</td></tr> : sorted.map(t => (
+                                    <tr key={t.id} className="hover:bg-slate-50 transition-colors group">
+                                        <td className="px-6 py-2">
+                                            <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                                                <span className="text-slate-600">{t.date}</span>
+                                                <span className="text-slate-300">|</span>
+                                                <span className="font-mono text-slate-400">{t.time}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-2 font-bold text-slate-800 text-xs">{t.ticker}</td>
+                                        <td className="px-6 py-2">
+                                            {/* Consistent Colors */}
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${t.direction === 'Long' ? 'bg-success-50 text-success-500 border-success-100' : 'bg-danger-50 text-danger-500 border-danger-100'}`}>{t.direction}</span>
+                                        </td>
+                                        <td className={`px-6 py-2 text-right font-medium text-sm ${t.pnl>0?'text-success-500':t.pnl<0?'text-danger-500':'text-slate-600'}`}>
+                                            {t.pnl>0?'+':''}{t.pnl.toLocaleString('en-US',{style:'currency',currency:'USD'})}
+                                        </td>
+                                        <td className={`px-6 py-2 text-right font-medium text-sm ${t.pnlPercent>0?'text-success-500':t.pnlPercent<0?'text-danger-500':'text-slate-500'}`}>
+                                            {t.pnlPercent>0?'+':''}{t.pnlPercent.toFixed(2)}%
+                                        </td>
+                                        <td className="px-6 py-2 text-right">
+                                            <div className="flex justify-end gap-1">
+                                                <button onClick={()=>onEdit(t)} className="p-1 rounded-md text-slate-400 hover:text-primary-600 hover:bg-slate-100"><Pencil size={14}/></button>
+                                                <button onClick={()=>onDelete(t.id)} className="p-1 rounded-md text-slate-400 hover:text-danger-500 hover:bg-slate-100"><Trash2 size={14}/></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        // 5. Reports (Weekly)
+        const WeeklyPerformance = ({ trades }) => {
+            if(trades.length === 0) return null;
+            const getMonday = (d) => {
+                const date = new Date(d);
+                const day = date.getDay();
+                const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                const m = new Date(date.setDate(diff));
+                m.setHours(0,0,0,0);
+                return m;
+            };
+            const weeksMap = {};
+            trades.forEach(t => {
+                const m = getMonday(new Date(t.date.replace(/-/g, '/')));
+                const key = m.getTime();
+                if(!weeksMap[key]) weeksMap[key] = [];
+                weeksMap[key].push(t);
+            });
+            const sortedWeeks = Object.keys(weeksMap).sort((a,b) => b-a).map(k => {
+                const weekTrades = weeksMap[k];
+                const monday = new Date(parseInt(k));
+                const days = [];
+                const curr = new Date(monday);
+                for(let i=0; i<5; i++) {
+                    const y = curr.getFullYear();
+                    const m = String(curr.getMonth()+1).padStart(2,'0');
+                    const d = String(curr.getDate()).padStart(2,'0');
+                    const dateStr = `${y}-${m}-${d}`;
+                    const dTrades = weekTrades.filter(t => t.date === dateStr);
+                    const pnl = dTrades.reduce((s,t)=>s+t.pnl,0);
+                    const percent = dTrades.reduce((s,t)=>s+t.pnlPercent,0);
+                    days.push({ display: curr.toLocaleDateString('en-US',{month:'short',day:'numeric'}), pnl, percent, count: dTrades.length });
+                    curr.setDate(curr.getDate()+1);
+                }
+                const wPnl = weekTrades.reduce((s,t)=>s+t.pnl,0);
+                const wPct = weekTrades.reduce((s,t)=>s+t.pnlPercent,0);
+                return { days, summary: { pnl: wPnl, percent: wPct } };
+            });
+
+            return (
+                <div className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6 mt-8">
+                    <h2 className="text-xl font-bold text-slate-800 mb-4">Weekly Performance</h2>
+                    <div className="grid grid-cols-6 gap-2 mb-2">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Week'].map((d,i) => <div key={i} className="text-xs font-bold text-center text-slate-400 uppercase">{d}</div>)}
+                    </div>
+                    <div className="space-y-2">
+                        {sortedWeeks.map((wk, i) => (
+                            <div key={i} className="grid grid-cols-6 gap-2">
+                                {wk.days.map((d, j) => {
+                                    let color = d.pnl > 0 ? 'text-success-500' : d.pnl < 0 ? 'text-danger-500' : 'text-slate-400';
+                                    let bg = "bg-slate-50/50 border-slate-100";
+                                    let style = {};
+                                    
+                                    if(d.count > 0) {
+                                        if(d.pnl > 0) {
+                                            style = { backgroundColor: `${CHART_GREEN}1A`, borderColor: `${CHART_GREEN}33` };
+                                            bg = "border";
+                                        } else if(d.pnl < 0) {
+                                            style = { backgroundColor: `${CHART_RED}1A`, borderColor: `${CHART_RED}33` };
+                                            bg = "border";
+                                        } else {
+                                            bg = "bg-white border-slate-200";
+                                        }
+                                    }
+                                    
+                                    return (
+                                        <div key={j} style={style} className={`border rounded-xl p-2 flex flex-col justify-between h-[70px] ${bg}`}>
+                                            <span className="text-[9px] text-slate-400 font-semibold">{d.display}</span>
+                                            {d.count > 0 ? (
+                                                <div className="text-right">
+                                                    <div className={`text-sm font-bold leading-none ${color}`}>{d.pnl>0?'+':''}{Math.round(d.pnl)}</div>
+                                                </div>
+                                            ) : <div className="text-right text-slate-300">-</div>}
+                                        </div>
+                                    );
+                                })}
+                                <div className="bg-slate-100 border border-slate-200 rounded-xl p-2 flex flex-col justify-center items-end h-[70px]">
+                                    <span className={`text-sm font-bold ${wk.summary.pnl >= 0 ? 'text-success-500' : 'text-danger-500'}`}>
+                                        {wk.summary.pnl > 0 ? '+' : wk.summary.pnl < 0 ? '-' : ''}${Math.abs(Math.round(wk.summary.pnl))}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const AddTradeModal = ({ isOpen, onClose, onSave, onDelete, initialDate, tradeToEdit }) => {
+            const [formData, setFormData] = useState({ id: '', timestamp: 0, date: '', time: '', direction: 'Long', status: 'Win', pnl: '', pnlPercent: 0, accountBalance: 10000, ticker: 'XAUUSD', setup: '', notes: '' });
+            
+            useEffect(() => {
+                if(isOpen) {
+                    if(tradeToEdit) {
+                        let bal = 10000;
+                        if(tradeToEdit.pnlPercent !== 0) bal = (tradeToEdit.pnl / tradeToEdit.pnlPercent) * 100;
+                        setFormData({ ...tradeToEdit, accountBalance: Math.abs(bal) });
+                    } else {
+                        const d = new Date();
+                        const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                        setFormData({ id: '', timestamp: 0, date: initialDate || todayStr, time: d.toTimeString().slice(0,5), direction: 'Long', status: 'Win', pnl: '', pnlPercent: 0, accountBalance: 10000, ticker: 'XAUUSD', setup: '', notes: '' });
+                    }
+                }
+            }, [isOpen, tradeToEdit, initialDate]);
+
+            useEffect(() => {
+                const pnl = Number(formData.pnl || 0);
+                const bal = Number(formData.accountBalance);
+                if(bal !== 0) setFormData(prev => ({ ...prev, pnlPercent: (pnl/bal)*100 }));
+            }, [formData.pnl, formData.accountBalance]);
+
+            if(!isOpen) return null;
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                const pnlVal = Number(formData.pnl);
+                const newTrade = { ...formData, id: tradeToEdit ? tradeToEdit.id : Math.random().toString(36).substr(2,9), timestamp: new Date(formData.date + 'T' + formData.time).getTime(), pnl: pnlVal, pnlPercent: Number(formData.pnlPercent), status: pnlVal > 0 ? 'Win' : pnlVal < 0 ? 'Loss' : 'Break Even' };
+                onSave(newTrade);
+                onClose();
+            };
+
+            return (
+                <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold">{tradeToEdit ? 'Edit Trade' : 'New Trade'}</h2>
+                            <button onClick={onClose}><X size={24} className="text-slate-400"/></button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="text-xs font-bold text-slate-500 block mb-1">Date</label><input required type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200"/></div>
+                                <div><label className="text-xs font-bold text-slate-500 block mb-1">Time</label><input required type="time" value={formData.time} onChange={e=>setFormData({...formData, time:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200"/></div>
+                            </div>
+                            <div><label className="text-xs font-bold text-slate-500 block mb-1">Ticker</label><input required value={formData.ticker} onChange={e=>setFormData({...formData, ticker:e.target.value.toUpperCase()})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold"/></div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button type="button" onClick={()=>setFormData({...formData, direction:'Long'})} className={`p-3 rounded-xl font-bold border ${formData.direction==='Long'?'bg-success-500 text-white border-success-500':'bg-slate-50 text-slate-500 border-slate-200'}`}>Buy / Long</button>
+                                <button type="button" onClick={()=>setFormData({...formData, direction:'Short'})} className={`p-3 rounded-xl font-bold border ${formData.direction==='Short'?'bg-danger-500 text-white border-danger-500':'bg-slate-50 text-slate-500 border-slate-200'}`}>Sell / Short</button>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 block mb-1">Net P/L ($)</label>
+                                <div className="relative">
+                                    <input required type="number" step="any" value={formData.pnl} onChange={e=>setFormData({...formData, pnl:e.target.value})} className={`w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold ${Number(formData.pnl)>0?'text-success-500':Number(formData.pnl)<0?'text-danger-500':'text-slate-800'}`}/>
+                                    <span className={`absolute right-4 top-3 text-sm font-bold ${formData.pnlPercent>0?'text-success-500':formData.pnlPercent<0?'text-danger-500':'text-slate-400'}`}>{formData.pnlPercent>0?'+':''}{formData.pnlPercent.toFixed(2)}%</span>
+                                </div>
+                            </div>
+                            <div><label className="text-xs font-bold text-slate-500 block mb-1">Balance ($)</label><input type="number" value={formData.accountBalance} onChange={e=>setFormData({...formData, accountBalance:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200"/></div>
+                            <div className="pt-4 flex gap-3">
+                                {tradeToEdit && <button type="button" onClick={()=>{ if(window.confirm('Delete?')) { onDelete(tradeToEdit.id); onClose(); }}} className="flex-1 bg-danger-50 text-danger-500 p-3 rounded-xl font-bold">Delete</button>}
+                                <button type="submit" className="flex-1 bg-slate-900 text-white p-3 rounded-xl font-bold shadow-lg">Save Trade</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App ---
+        const App = () => {
+            const [trades, setTrades] = useState([]);
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [editTrade, setEditTrade] = useState(null);
+            const [modalDate, setModalDate] = useState(undefined);
+
+            useEffect(() => { setTrades(loadTrades()); }, []);
+            useEffect(() => { if(trades.length > 0 || loadTrades().length > 0) saveTrades(trades); }, [trades]);
+
+            const stats = useMemo(() => calculateStats(trades), [trades]);
+            const chartData = useMemo(() => {
+                const sorted = [...trades].sort((a,b) => a.timestamp - b.timestamp);
+                let run = 0;
+                return sorted.map(t => { run += t.pnl; return { value: run }; });
+            }, [trades]);
+
+            const handleSave = (trade) => {
+                setTrades(prev => {
+                    const idx = prev.findIndex(t => t.id === trade.id);
+                    if(idx >= 0) { const n = [...prev]; n[idx] = trade; return n; }
+                    return [...prev, trade];
+                });
+            };
+            const handleDelete = (id) => setTrades(prev => prev.filter(t => t.id !== id));
+            
+            // Last 5 logic using consistent colors
+            const last5 = [...trades].sort((a,b)=>b.timestamp-a.timestamp).slice(0,5).reverse();
+
+            return (
+                <div className="min-h-screen pb-12">
+                    <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-600/20 mr-3">
+                                <span className="text-white font-bold text-xl">Z</span>
+                            </div>
+                            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">TradeJournal Pro</h1>
+                        </div>
+
+                        {/* KPI Grid - Set fixed height (approx 180px) for top 2 cards, keep list auto */}
+                        <div className="grid grid-cols-1 lg:grid-cols-[30fr_40fr_30fr] gap-4">
+                            <div className="h-[180px]">
+                                <StatCard 
+                                    title="Total Net P/L" 
+                                    value={`$${stats.totalPnl.toLocaleString()}`}
+                                    chartData={chartData}
+                                />
+                            </div>
+                            <div className="h-[180px]">
+                                <WinRateWidget trades={trades} />
+                            </div>
+                            {/* Third card (List) adapts height or can be fixed, 180px matches others well */}
+                            <div className="h-[180px]">
+                                <StatCard 
+                                    items={[
+                                        { label: 'Profit Factor', value: stats.profitFactor.toFixed(2), highlight: true },
+                                        { label: 'Avg Daily', value: `$${Math.round(stats.avgDailyProfit)}` },
+                                        { label: 'Max Drawdown', value: `${stats.maxDrawdown.toFixed(1)}%` },
+                                        { label: 'Last 5', value: (
+                                            <div className="flex gap-1">
+                                                {last5.map(t => (
+                                                    <span key={t.id} className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-bold ${t.pnl > 0 ? 'bg-success-100 text-success-700' : t.pnl < 0 ? 'bg-danger-100 text-danger-700' : 'bg-slate-400 text-white'}`}>
+                                                        {t.pnl>0?'W':t.pnl<0?'L':'B'}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    ]}
+                                />
+                            </div>
+                        </div>
+
+                        <Calendar 
+                            trades={trades} 
+                            onDayClick={(d) => { setModalDate(d); setEditTrade(null); setIsModalOpen(true); }} 
+                        />
+
+                        <TradeList 
+                            trades={trades}
+                            onAdd={() => { setModalDate(undefined); setEditTrade(null); setIsModalOpen(true); }}
+                            onEdit={(t) => { setEditTrade(t); setIsModalOpen(true); }}
+                            onDelete={handleDelete}
+                        />
+
+                        <WeeklyPerformance trades={trades} />
+                    </div>
+
+                    <AddTradeModal 
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        onSave={handleSave}
+                        onDelete={handleDelete}
+                        initialDate={modalDate}
+                        tradeToEdit={editTrade}
+                    />
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
